@@ -358,10 +358,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
       <div class="fg">
-        <label>Fecha</label>
+        <label>Fecha de entrega</label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="date" id="f-fecha" style="flex:1;">
           <button type="button" onclick="document.getElementById('f-fecha').value=''" title="Limpiar fecha" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">✕</button>
+        </div>
+      </div>
+      <div class="fg" id="fecha-pago-section" style="display:none;">
+        <label>Fecha de pago</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="date" id="f-fecha-pago" style="flex:1;">
+          <button type="button" onclick="document.getElementById('f-fecha-pago').value=''" title="Limpiar fecha de pago" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">✕</button>
         </div>
       </div>
       <div class="fg" id="canal-section">
@@ -663,6 +670,7 @@ function renderRow(e) {
     <div>
       <div class="entry-desc" onclick="openImgOrEdit(${e.id})">${e.desc}${e.photo?' 📷':''}</div>
       ${e.notas ? `<div class="entry-sub">${e.notas}</div>` : ''}
+      ${e.fechaPago && e.fechaPago !== e.fecha ? `<div class="entry-sub" style="color:var(--green);font-size:10px;">💰 Pago: ${formatDate(e.fechaPago)}</div>` : ''}
     </div>
     <div><span class="entry-buyer">${e.buyer||''}</span><br>${getBadge(canal)}</div>
     ${amtHTML}${antHTML}${pendHTML}
@@ -763,7 +771,7 @@ function renderStatsBar() {
   const totalOut = Math.abs(gastos.reduce((s,e) => s+(e.monto||0), 0));
   const neto = totalIn - totalOut;
   const totalPend = ventas.reduce((s,e) => s+calcPend(e), 0);
-  const numPrev = entries.filter(e=>e.estatus==='preventa').length;
+  const numPrev = entries.filter(e=>e.estatusEntrega==='preventa').length;
   document.getElementById('stats-bar').innerHTML = `
     <div class="stat-card"><div class="stat-label">Ingresos totales</div><div class="stat-value green">$${totalIn.toLocaleString()}</div></div>
     <div class="stat-card"><div class="stat-label">Gastos totales</div><div class="stat-value red">$${totalOut.toLocaleString()}</div></div>
@@ -782,15 +790,40 @@ function getRange(p) {
 
 function renderStatsDetail() {
   const { start, end } = getRange(activePeriod);
-  const inR = entries.filter(e => { if(!e.fecha) return false; const d=new Date(e.fecha+'T12:00:00'); return d>=start&&d<=end; });
+
+  // Fecha efectiva: usa fechaPago si existe, sino fecha de entrega
+  const fechaEfectiva = e => e.fechaPago || e.fecha;
+
+  // Ventas en el período (por fecha efectiva de pago)
+  const inR = entries.filter(e => {
+    const f = fechaEfectiva(e);
+    if (!f) return false;
+    const d = new Date(f+'T12:00:00');
+    return d >= start && d <= end;
+  });
+
+  // Gastos en el período (por fecha de entrega, no de pago)
+  const gastosR = entries.filter(e => {
+    if (e.tipo !== 'gasto') return false;
+    if (!e.fecha) return false;
+    const d = new Date(e.fecha+'T12:00:00');
+    return d >= start && d <= end;
+  });
+
   const ventas = inR.filter(e=>e.tipo==='venta'||e.tipo==='pkg');
-  const gastos = inR.filter(e=>e.tipo==='gasto');
   const mls = inR.filter(e=>e.tipo==='ml');
   const totalIn = ventas.reduce((s,e)=>s+(e.monto||0),0);
-  const totalOut = Math.abs(gastos.reduce((s,e)=>s+(e.monto||0),0));
+  const totalOut = Math.abs(gastosR.reduce((s,e)=>s+(e.monto||0),0));
   const neto = totalIn - totalOut;
-  const pend = ventas.reduce((s,e)=>s+calcPend(e),0);
-  const cobrado = ventas.reduce((s,e)=>s+(e.anticipo||0),0);
+
+  // Pendiente y cobrado: del total de entradas (no solo del período)
+  const todasVentas = entries.filter(e=>e.tipo==='venta'||e.tipo==='pkg');
+  const pend = todasVentas.reduce((s,e)=>s+calcPend(e),0);
+  const cobrado = ventas.reduce((s,e)=>s+(e.anticipo||0)+(e.estatusPago==='pagado'?calcPend(e):0),0);
+
+  // Ventas con fecha de pago diferente a fecha de entrega en el período
+  const conFechaPagoDist = ventas.filter(e=>e.fechaPago && e.fechaPago !== e.fecha).length;
+
   const byCh = {};
   ventas.forEach(e=>{ byCh[e.canal]=(byCh[e.canal]||0)+(e.monto||0); });
   const bars = Object.entries(byCh).map(([c,v])=>{
@@ -801,20 +834,22 @@ function renderStatsDetail() {
       <div class="ch-bar-track"><div class="ch-bar-fill" style="width:${pct}%;background:${col}"></div></div>
     </div>`;
   }).join('');
+
   document.getElementById('stats-detail').innerHTML = `
     <div class="stats-section">
       <div class="stats-section-title">💰 Financiero</div>
-      <div class="stats-row"><span class="lbl">Ingresos</span><span class="val" style="color:var(--green)">$${totalIn.toLocaleString()}</span></div>
+      <div class="stats-row"><span class="lbl">Ingresos <span style="font-size:10px;color:var(--text-dim)">(por fecha de pago)</span></span><span class="val" style="color:var(--green)">$${totalIn.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Gastos</span><span class="val" style="color:var(--red)">-$${totalOut.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Neto</span><span class="val" style="color:${neto>=0?'var(--green)':'var(--red)'};font-size:16px">${neto>=0?'+':''}$${neto.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Envíos ML</span><span class="val" style="color:var(--yellow)">${mls.length}</span></div>
+      ${conFechaPagoDist > 0 ? `<div class="stats-row"><span class="lbl" style="color:var(--text-dim);font-size:11px">💡 ${conFechaPagoDist} venta(s) pagadas antes de la entrega</span></div>` : ''}
     </div>
     <div class="stats-section">
       <div class="stats-section-title">⏳ Cobranza</div>
-      <div class="stats-row"><span class="lbl">Cobrado</span><span class="val" style="color:var(--green)">$${cobrado.toLocaleString()}</span></div>
-      <div class="stats-row"><span class="lbl">Pendiente</span><span class="val" style="color:var(--yellow)">$${pend.toLocaleString()}</span></div>
+      <div class="stats-row"><span class="lbl">Cobrado en período</span><span class="val" style="color:var(--green)">$${cobrado.toLocaleString()}</span></div>
+      <div class="stats-row"><span class="lbl">Pendiente global</span><span class="val" style="color:var(--yellow)">$${pend.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Piezas vendidas</span><span class="val">${ventas.length}</span></div>
-      <div class="stats-row"><span class="lbl">Gastos registrados</span><span class="val">${gastos.length}</span></div>
+      <div class="stats-row"><span class="lbl">Gastos registrados</span><span class="val">${gastosR.length}</span></div>
     </div>
     <div class="stats-section" style="grid-column:1/-1">
       <div class="stats-section-title">📦 Por canal</div>
@@ -860,6 +895,12 @@ function toggleEstatusPago(id) {
   const cycle = ['pendiente','pagado'];
   const idx = cycle.indexOf(e.estatusPago||'pendiente');
   e.estatusPago = cycle[(idx+1)%cycle.length];
+  // Si se marca como pagado y no tiene fecha de pago, poner hoy
+  if (e.estatusPago === 'pagado' && !e.fechaPago) {
+    e.fechaPago = new Date().toISOString().split('T')[0];
+  }
+  // Si regresa a pendiente, limpiar fecha de pago
+  if (e.estatusPago === 'pendiente') e.fechaPago = null;
   scheduleSave(); render();
 }
 
@@ -911,6 +952,8 @@ function openModal(id=null, defaultEstatusEntrega=null) {
     let ee = e.estatusEntrega || (['listo','sin-fecha','preventa'].includes(e.estatus)?e.estatus:'ninguno');
     setEstatusPago(ep, document.querySelector(`.estatus-pago-opt[data-val="${ep}"]`));
     setEstatusEntrega(ee, document.querySelector(`.estatus-entrega-opt[data-val="${ee}"]`));
+    // Cargar fecha de pago si existe (después de setEstatusPago que la prelleana)
+    if (e.fechaPago) document.getElementById('f-fecha-pago').value = e.fechaPago;
   } else {
     document.getElementById('modal-title').textContent = 'NUEVA ENTRADA';
     document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
@@ -947,6 +990,19 @@ function setEstatusPago(val, el) {
   estatusPagoActual = val;
   document.querySelectorAll('.estatus-pago-opt').forEach(o=>o.classList.remove('selected'));
   if (el) el.classList.add('selected');
+  // Mostrar/ocultar campo fecha de pago
+  const sec = document.getElementById('fecha-pago-section');
+  const input = document.getElementById('f-fecha-pago');
+  if (sec && input) {
+    if (val === 'pagado') {
+      sec.style.display = 'block';
+      // Solo prellenar si está vacío
+      if (!input.value) input.value = new Date().toISOString().split('T')[0];
+    } else {
+      sec.style.display = 'none';
+      input.value = '';
+    }
+  }
 }
 
 function setEstatusEntrega(val, el) {
@@ -1033,6 +1089,7 @@ function saveEntry() {
   const entry = {
     id: editingId||Date.now(),
     fecha: document.getElementById('f-fecha').value||null,
+    fechaPago: ep==='pagado' ? (document.getElementById('f-fecha-pago').value||null) : null,
     tipo: tipoActual, desc,
     buyer: document.getElementById('f-buyer').value.trim(),
     canal, 
