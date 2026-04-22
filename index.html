@@ -110,6 +110,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .status-pill.listo{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);}
 .status-pill.sin-fecha{background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-border);}
 .status-pill.preventa{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-border);}
+.status-pill.ninguno{background:var(--surface3);color:var(--text-dim);border:1px solid var(--border);}
+.pills-col{display:flex;flex-direction:column;gap:3px;}
 
 .entry-actions{display:flex;gap:4px;opacity:0;transition:opacity .15s;}
 .entry:hover .entry-actions{opacity:1;}
@@ -168,6 +170,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .estatus-opt[data-val="listo"].selected{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);}
 .estatus-opt[data-val="sin-fecha"].selected{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-bg);}
 .estatus-opt[data-val="preventa"].selected{border-color:var(--orange);color:var(--orange);background:var(--orange-bg);}
+
+.estatus-pago-selector{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+.estatus-pago-opt{padding:7px 4px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);text-align:center;cursor:pointer;font-size:11px;font-weight:500;transition:all .15s;user-select:none;line-height:1.4;}
+.estatus-pago-opt[data-val="pendiente"].selected{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-bg);}
+.estatus-pago-opt[data-val="pagado"].selected{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+
+.estatus-entrega-selector{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.estatus-entrega-opt{padding:7px 4px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);text-align:center;cursor:pointer;font-size:11px;font-weight:500;transition:all .15s;user-select:none;line-height:1.4;}
+.estatus-entrega-opt[data-val="listo"].selected{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);}
+.estatus-entrega-opt[data-val="sin-fecha"].selected{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-bg);}
+.estatus-entrega-opt[data-val="preventa"].selected{border-color:var(--orange);color:var(--orange);background:var(--orange-bg);}
+.estatus-entrega-opt[data-val="ninguno"].selected{border-color:var(--border);color:var(--text-muted);background:var(--surface3);}
 
 .photo-upload{border:2px dashed var(--border);border-radius:8px;padding:18px;text-align:center;cursor:pointer;transition:border-color .15s;}
 .photo-upload:hover{border-color:var(--accent);}
@@ -328,18 +342,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
       <div class="fg form-full" id="estatus-section">
+        <label>Estatus de pago</label>
+        <div class="estatus-pago-selector">
+          <div class="estatus-pago-opt selected" data-val="pendiente" onclick="setEstatusPago('pendiente',this)">🟡<br>Pendiente</div>
+          <div class="estatus-pago-opt" data-val="pagado" onclick="setEstatusPago('pagado',this)">✅<br>Pagado</div>
+        </div>
+      </div>
+      <div class="fg form-full" id="estatus-entrega-section">
         <label>Estatus de entrega</label>
-        <div class="estatus-selector">
-          <div class="estatus-opt selected" data-val="pendiente" onclick="setEstatus('pendiente',this)">🟡<br>Pendiente</div>
-          <div class="estatus-opt" data-val="pagado" onclick="setEstatus('pagado',this)">✅<br>Pagado</div>
-          <div class="estatus-opt" data-val="listo" onclick="setEstatus('listo',this)">📫<br>Listo p/entregar</div>
-          <div class="estatus-opt" data-val="sin-fecha" onclick="setEstatus('sin-fecha',this)">📭<br>Sin fecha</div>
-          <div class="estatus-opt" data-val="preventa" onclick="setEstatus('preventa',this)">🔮<br>Preventa</div>
+        <div class="estatus-entrega-selector">
+          <div class="estatus-entrega-opt" data-val="listo" onclick="setEstatusEntrega('listo',this)">📫<br>Listo p/entregar</div>
+          <div class="estatus-entrega-opt" data-val="sin-fecha" onclick="setEstatusEntrega('sin-fecha',this)">📭<br>Sin fecha</div>
+          <div class="estatus-entrega-opt" data-val="preventa" onclick="setEstatusEntrega('preventa',this)">🔮<br>Preventa</div>
+          <div class="estatus-entrega-opt selected" data-val="ninguno" onclick="setEstatusEntrega('ninguno',this)">📦<br>Sin asignar</div>
         </div>
       </div>
       <div class="fg">
         <label>Fecha</label>
-        <input type="date" id="f-fecha">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="date" id="f-fecha" style="flex:1;">
+          <button type="button" onclick="document.getElementById('f-fecha').value=''" title="Limpiar fecha" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface3);color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">✕</button>
+        </div>
       </div>
       <div class="fg" id="canal-section">
         <label>Canal de entrega</label>
@@ -421,7 +444,8 @@ let activeFilter = 'all';
 let activePeriod = 'semana';
 let editingId = null;
 let tipoActual = 'venta';
-let estatusActual = 'pendiente';
+let estatusPagoActual = 'pendiente';
+let estatusEntregaActual = 'ninguno';
 let photoDataURL = null;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
@@ -587,17 +611,9 @@ function getBadge(canal) {
   return `<span class="badge" style="background:${col}22;color:${col};border:1px solid ${col}44">${lbl}</span>`;
 }
 
+// getStatusPill legacy kept for card view (single pill - entrega)
 function getStatusPill(e) {
-  const s = e.estatus || 'pendiente';
-  const map = {
-    pagado:   { cls:'pagado',    icon:'✅', lbl:'Pagado' },
-    pendiente:{ cls:'pendiente', icon:'🟡', lbl:'Pendiente' },
-    listo:    { cls:'listo',     icon:'📫', lbl:'Listo' },
-    'sin-fecha':{ cls:'sin-fecha', icon:'📭', lbl:'Sin fecha' },
-    preventa: { cls:'preventa',  icon:'🔮', lbl:'Preventa' },
-  };
-  const info = map[s] || map.pendiente;
-  return `<button class="status-pill ${info.cls}" onclick="toggleEstatus(${e.id})" title="Clic para cambiar estatus">${info.icon} ${info.lbl}</button>`;
+  return getStatusPills(e);
 }
 
 function formatDate(d) {
@@ -619,7 +635,7 @@ function getRowColor(e) {
   if (e.tipo === 'gasto') return 'color-red';
   if (e.tipo === 'ml') return 'color-yellow';
   if (e.tipo === 'pkg') return 'color-cyan';
-  if (e.estatus === 'pagado') return 'color-green';
+  if ((e.estatusPago||e.estatus) === 'pagado') return 'color-green';
   return 'color-default';
 }
 
@@ -650,7 +666,7 @@ function renderRow(e) {
     </div>
     <div><span class="entry-buyer">${e.buyer||''}</span><br>${getBadge(canal)}</div>
     ${amtHTML}${antHTML}${pendHTML}
-    ${(!isGasto && !isML) ? getStatusPill(e) : '<div></div>'}
+    ${(!isGasto && !isML) ? getStatusPills(e) : '<div></div>'}
     <div class="entry-actions">
       <button class="btn-sm" onclick="editEntry(${e.id})">✏️</button>
       <button class="btn-sm del" onclick="deleteEntry(${e.id})">🗑</button>
@@ -689,7 +705,8 @@ function renderCard(e) {
 function renderEntregas() {
   const q = document.getElementById('search-entregas').value;
   const f = activeFilter;
-  const main = entries.filter(e => e.estatus !== 'sin-fecha' && e.estatus !== 'preventa');
+  // Entregas: excluir sin-fecha y preventa (por estatusEntrega)
+  const main = entries.filter(e => e.estatusEntrega !== 'sin-fecha' && e.estatusEntrega !== 'preventa');
   let filtered = main.filter(e => {
     if (!matchSearch(e, q)) return false;
     if (f === 'all') return true;
@@ -723,20 +740,20 @@ function renderEntregas() {
 
 function renderPendientes() {
   const q = document.getElementById('search-pendientes').value;
-  const list = entries.filter(e => e.estatus === 'sin-fecha' && matchSearch(e, q));
+  const list = entries.filter(e => e.estatusEntrega === 'sin-fecha' && matchSearch(e, q));
   document.getElementById('pendientes-list').innerHTML = list.length
     ? list.map(renderCard).join('')
     : '<div class="empty-state"><div class="icon">📭</div><p>Sin pendientes sin fecha. ¡Todo coordinado!</p></div>';
-  document.getElementById('badge-pendientes').textContent = entries.filter(e=>e.estatus==='sin-fecha').length;
+  document.getElementById('badge-pendientes').textContent = entries.filter(e=>e.estatusEntrega==='sin-fecha').length;
 }
 
 function renderPreventas() {
   const q = document.getElementById('search-preventas').value;
-  const list = entries.filter(e => e.estatus === 'preventa' && matchSearch(e, q));
+  const list = entries.filter(e => e.estatusEntrega === 'preventa' && matchSearch(e, q));
   document.getElementById('preventas-list').innerHTML = list.length
     ? list.map(renderCard).join('')
     : '<div class="empty-state"><div class="icon">🔮</div><p>Sin preventas activas.</p></div>';
-  document.getElementById('badge-preventas').textContent = entries.filter(e=>e.estatus==='preventa').length;
+  document.getElementById('badge-preventas').textContent = entries.filter(e=>e.estatusEntrega==='preventa').length;
 }
 
 function renderStatsBar() {
@@ -837,12 +854,24 @@ function showTab(tab) {
   );
 }
 
-function toggleEstatus(id) {
+function toggleEstatusPago(id) {
   const e = entries.find(x=>x.id===id);
   if (!e || e.tipo==='gasto' || e.tipo==='ml') return;
-  const cycle = ['pendiente','pagado','listo','sin-fecha'];
-  const idx = cycle.indexOf(e.estatus||'pendiente');
-  e.estatus = cycle[(idx+1)%cycle.length];
+  const cycle = ['pendiente','pagado'];
+  const idx = cycle.indexOf(e.estatusPago||'pendiente');
+  e.estatusPago = cycle[(idx+1)%cycle.length];
+  scheduleSave(); render();
+}
+
+function toggleEstatusEntrega(id) {
+  const e = entries.find(x=>x.id===id);
+  if (!e || e.tipo==='gasto' || e.tipo==='ml') return;
+  const cycle = ['ninguno','listo','sin-fecha','preventa'];
+  const idx = cycle.indexOf(e.estatusEntrega||'ninguno');
+  const next = cycle[(idx+1)%cycle.length];
+  e.estatusEntrega = next;
+  // Si se pone sin-fecha, limpiar la fecha
+  if (next === 'sin-fecha') e.fecha = null;
   scheduleSave(); render();
 }
 
@@ -862,7 +891,7 @@ function openImgOrEdit(id) {
 }
 
 // ─── MODAL ────────────────────────────────────────────────────
-function openModal(id=null, defaultEstatus=null) {
+function openModal(id=null, defaultEstatusEntrega=null) {
   editingId = id; photoDataURL = null;
   if (id) {
     const e = entries.find(x=>x.id===id);
@@ -877,15 +906,20 @@ function openModal(id=null, defaultEstatus=null) {
     photoDataURL = e.photo||null;
     const tMap = {venta:'t-venta',ml:'t-ml',pkg:'t-pkg',gasto:'t-gasto'};
     setTipo(e.tipo, document.getElementById(tMap[e.tipo]||'t-venta'));
-    setEstatus(e.estatus||'pendiente', document.querySelector(`.estatus-opt[data-val="${e.estatus||'pendiente'}"]`));
+    // Migración: si tiene estatus antiguo, convertirlo
+    let ep = e.estatusPago || (e.estatus==='pagado'?'pagado':'pendiente');
+    let ee = e.estatusEntrega || (['listo','sin-fecha','preventa'].includes(e.estatus)?e.estatus:'ninguno');
+    setEstatusPago(ep, document.querySelector(`.estatus-pago-opt[data-val="${ep}"]`));
+    setEstatusEntrega(ee, document.querySelector(`.estatus-entrega-opt[data-val="${ee}"]`));
   } else {
     document.getElementById('modal-title').textContent = 'NUEVA ENTRADA';
     document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
     ['f-desc','f-buyer','f-notas'].forEach(i=>document.getElementById(i).value='');
     ['f-monto','f-anticipo','f-pendiente'].forEach(i=>document.getElementById(i).value='');
     setTipo('venta', document.getElementById('t-venta'));
-    const es = defaultEstatus||'pendiente';
-    setEstatus(es, document.querySelector(`.estatus-opt[data-val="${es}"]`));
+    const ee = defaultEstatusEntrega||'ninguno';
+    setEstatusPago('pendiente', document.querySelector('.estatus-pago-opt[data-val="pendiente"]'));
+    setEstatusEntrega(ee, document.querySelector(`.estatus-entrega-opt[data-val="${ee}"]`));
   }
   recalcPend();
   updatePhotoPreview();
@@ -906,12 +940,46 @@ function setTipo(tipo, el) {
   s('anticipo-section', tipo==='venta'||tipo==='pkg');
   s('pendiente-section', tipo==='venta'||tipo==='pkg');
   sb('estatus-section', tipo!=='gasto'&&tipo!=='ml');
+  sb('estatus-entrega-section', tipo!=='gasto'&&tipo!=='ml');
 }
 
-function setEstatus(val, el) {
-  estatusActual = val;
-  document.querySelectorAll('.estatus-opt').forEach(o=>o.classList.remove('selected'));
+function setEstatusPago(val, el) {
+  estatusPagoActual = val;
+  document.querySelectorAll('.estatus-pago-opt').forEach(o=>o.classList.remove('selected'));
   if (el) el.classList.add('selected');
+}
+
+function setEstatusEntrega(val, el) {
+  estatusEntregaActual = val;
+  document.querySelectorAll('.estatus-entrega-opt').forEach(o=>o.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+  // Si se selecciona Sin fecha, limpiar el campo de fecha
+  if (val === 'sin-fecha') {
+    const fechaEl = document.getElementById('f-fecha');
+    if (fechaEl) fechaEl.value = '';
+  }
+}
+
+function getStatusPills(e) {
+  // Pill de pago
+  const pagoMap = {
+    pagado:   { cls:'pagado',    icon:'✅', lbl:'Pagado' },
+    pendiente:{ cls:'pendiente', icon:'🟡', lbl:'Pendiente' },
+  };
+  const pagoInfo = pagoMap[e.estatusPago||'pendiente'] || pagoMap.pendiente;
+  const pagoPill = `<button class="status-pill ${pagoInfo.cls}" onclick="toggleEstatusPago(${e.id})" title="Cambiar estatus pago">${pagoInfo.icon} ${pagoInfo.lbl}</button>`;
+
+  // Pill de entrega
+  const entregaMap = {
+    listo:    { cls:'listo',     icon:'📫', lbl:'Listo' },
+    'sin-fecha':{ cls:'sin-fecha', icon:'📭', lbl:'Sin fecha' },
+    preventa: { cls:'preventa',  icon:'🔮', lbl:'Preventa' },
+    ninguno:  { cls:'ninguno',   icon:'📦', lbl:'─' },
+  };
+  const entregaInfo = entregaMap[e.estatusEntrega||'ninguno'] || entregaMap.ninguno;
+  const entregaPill = `<button class="status-pill ${entregaInfo.cls}" onclick="toggleEstatusEntrega(${e.id})" title="Cambiar estatus entrega">${entregaInfo.icon} ${entregaInfo.lbl}</button>`;
+
+  return `<div class="pills-col">${pagoPill}${entregaPill}</div>`;
 }
 
 function recalcPend() {
@@ -959,14 +1027,17 @@ function saveEntry() {
   const anticipo = parseFloat(document.getElementById('f-anticipo').value)||0;
   const canalEl = document.getElementById('f-canal');
   const canal = tipoActual==='ml'?'ML':tipoActual==='gasto'?'GASTO':(canalEl?canalEl.value:'HEB');
-  let estatus = estatusActual;
-  if (tipoActual==='ml'||tipoActual==='gasto') estatus='pagado';
+  let ep = estatusPagoActual;
+  let ee = estatusEntregaActual;
+  if (tipoActual==='ml'||tipoActual==='gasto') { ep='pagado'; ee='ninguno'; }
   const entry = {
     id: editingId||Date.now(),
     fecha: document.getElementById('f-fecha').value||null,
     tipo: tipoActual, desc,
     buyer: document.getElementById('f-buyer').value.trim(),
-    canal, estatus,
+    canal, 
+    estatusPago: ep,
+    estatusEntrega: ee,
     monto: tipoActual==='gasto'?-Math.abs(monto):monto,
     anticipo,
     notas: document.getElementById('f-notas').value.trim(),
