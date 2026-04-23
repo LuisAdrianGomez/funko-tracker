@@ -256,6 +256,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <button class="tab" onclick="showTab('pendientes')">⏳ Pendientes <span class="tab-badge" id="badge-pendientes">0</span></button>
     <button class="tab" onclick="showTab('preventas')">🔮 Preventas <span class="tab-badge orange" id="badge-preventas">0</span></button>
     <button class="tab" onclick="showTab('estadisticas')">📊 Estadísticas</button>
+    <button class="tab" onclick="showTab('importar')">⬆️ Importar</button>
   </div>
 
   <div class="content">
@@ -323,6 +324,54 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="period-btn" onclick="setPeriod('todo',this)">Todo</button>
       </div>
       <div class="stats-grid" id="stats-detail"></div>
+    </div>
+
+    <!-- IMPORTAR -->
+    <div id="tab-importar" style="display:none;">
+      <div style="max-width:560px;margin:0 auto;">
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:16px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;margin-bottom:6px;">⬆️ IMPORTAR DESDE EXCEL</div>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">Sube un archivo Excel con tus registros y se agregarán a los que ya tienes guardados en Drive. No se borrará nada existente.</p>
+
+          <!-- Formato esperado -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:18px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px;">Columnas requeridas en el Excel</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">fecha</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">fechaPago</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">tipo</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">desc</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">buyer</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">canal</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">monto</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">anticipo</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">estatusPago</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">estatusEntrega</span>
+              <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;">notas</span>
+            </div>
+          </div>
+
+          <!-- Dropzone -->
+          <div id="import-dropzone" style="border:2px dashed var(--border);border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('import-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleImportDrop(event)">
+            <input type="file" id="import-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleImportFile(event)">
+            <div id="import-dropzone-inner">
+              <div style="font-size:32px;margin-bottom:8px;">📂</div>
+              <div style="font-size:13px;color:var(--text-muted);">Clic para seleccionar archivo Excel<br><span style="font-size:11px;opacity:.6;">.xlsx o .xls</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview de registros parseados -->
+        <div id="import-preview" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:16px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;margin-bottom:14px;">VISTA PREVIA <span id="import-count" style="color:var(--accent);font-size:13px;font-family:'DM Sans',sans-serif;font-weight:600;letter-spacing:0;"></span></div>
+          <div id="import-preview-list"></div>
+          <button class="btn-add" style="margin-top:14px;width:100%;padding:10px;border-radius:8px;font-size:14px;" onclick="doImport()" id="btn-do-import">⬆️ Importar a Drive</button>
+        </div>
+
+        <!-- Log de importación -->
+        <div id="import-log" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;line-height:2;max-height:200px;overflow-y:auto;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -866,11 +915,11 @@ function setPeriod(p, btn) {
 }
 
 function showTab(tab) {
-  ['entregas','pendientes','preventas','estadisticas'].forEach(t=>{
+  ['entregas','pendientes','preventas','estadisticas','importar'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = t===tab?'block':'none';
   });
   document.querySelectorAll('.tab').forEach((t,i)=>
-    t.classList.toggle('active',['entregas','pendientes','preventas','estadisticas'][i]===tab)
+    t.classList.toggle('active',['entregas','pendientes','preventas','estadisticas','importar'][i]===tab)
   );
 }
 
@@ -1089,7 +1138,162 @@ function saveEntry() {
   scheduleSave(); closeModal(); render();
 }
 
-// ─── IMAGE MODAL ─────────────────────────────────────────────
+// ─── IMPORTADOR ──────────────────────────────────────────────
+let importEntries = [];
+
+function handleImportDrop(evt) {
+  evt.preventDefault();
+  document.getElementById('import-dropzone').style.borderColor = 'var(--border)';
+  const file = evt.dataTransfer.files[0];
+  if (file) processImportFile(file);
+}
+
+function handleImportFile(evt) {
+  const file = evt.target.files[0];
+  if (file) processImportFile(file);
+}
+
+function processImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      // Usar SheetJS (xlsx) si está disponible, sino parseo manual CSV
+      if (typeof XLSX !== 'undefined') {
+        parseWithSheetJS(e.target.result);
+      } else {
+        importLog('SheetJS no disponible. Cargando...', 'info');
+        loadSheetJS(() => parseWithSheetJS(e.target.result));
+      }
+    } catch(err) {
+      importLog('Error al leer el archivo: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadSheetJS(cb) {
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+function parseWithSheetJS(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+  if (!rows.length) { importLog('El archivo está vacío o sin datos.', 'err'); return; }
+
+  const fmtFecha = (v) => {
+    if (!v || v === '') return null;
+    try {
+      const d = new Date(v);
+      if (isNaN(d)) return null;
+      return d.toISOString().split('T')[0];
+    } catch { return null; }
+  };
+
+  const maxId = entries.reduce((m,e) => Math.max(m, e.id||0), 0);
+
+  importEntries = rows.map((row, i) => ({
+    id: maxId + i + 1,
+    fecha:          fmtFecha(row.fecha),
+    fechaPago:      fmtFecha(row.fechaPago),
+    tipo:           String(row.tipo||'venta').trim(),
+    desc:           String(row.desc||'').trim(),
+    buyer:          String(row.buyer||'').trim(),
+    canal:          String(row.canal||'OTRO').trim(),
+    monto:          parseFloat(row.monto)||0,
+    anticipo:       parseFloat(row.anticipo)||0,
+    estatusPago:    String(row.estatusPago||'pendiente').trim(),
+    estatusEntrega: String(row.estatusEntrega||'ninguno').trim(),
+    notas:          String(row.notas||'').trim(),
+    photo:          null,
+  })).filter(e => e.desc); // descartar filas sin descripción
+
+  showImportPreview();
+}
+
+function showImportPreview() {
+  if (!importEntries.length) { importLog('No se encontraron registros válidos.', 'err'); return; }
+
+  document.getElementById('import-count').textContent = `— ${importEntries.length} registro(s)`;
+  document.getElementById('import-dropzone-inner').innerHTML =
+    `<div style="font-size:28px;margin-bottom:6px;">✅</div><div style="font-size:13px;color:var(--green);">Archivo cargado — ${importEntries.length} registro(s) listos</div>`;
+
+  const html = importEntries.map(e => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;gap:8px;">
+      <div style="flex:1;">
+        <div style="font-weight:600;">${e.desc}</div>
+        <div style="color:var(--text-muted);margin-top:2px;">${e.buyer||'Sin comprador'} · $${e.monto.toLocaleString()}${e.anticipo?` · Anticipo $${e.anticipo.toLocaleString()}`:''}${e.notas?` · <em>${e.notas}</em>`:''}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0;">
+        <span style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">${e.tipo}</span>
+        <span style="background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">${e.estatusPago}</span>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('import-preview-list').innerHTML = html;
+  document.getElementById('import-preview').style.display = 'block';
+}
+
+async function doImport() {
+  if (!accessToken) { importLog('Sesión expirada. Recarga la página e inicia sesión de nuevo.', 'err'); return; }
+  if (!importEntries.length) { importLog('No hay registros para importar.', 'err'); return; }
+
+  document.getElementById('btn-do-import').disabled = true;
+  document.getElementById('import-log').style.display = 'block';
+
+  importLog('Buscando archivo en Google Drive...');
+  try {
+    await findOrCreateFile();
+    importLog(`Archivo encontrado. Registros actuales: ${entries.length}`);
+
+    // Fusionar: existentes + nuevos
+    const merged = [...entries, ...importEntries];
+    const body = JSON.stringify({ entries: merged });
+
+    importLog(`Subiendo ${importEntries.length} registro(s) nuevo(s)...`);
+    await driveRequest(
+      `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body }
+    );
+
+    // Actualizar estado local
+    entries = merged;
+    render();
+
+    importLog(`✅ ¡Listo! Se importaron ${importEntries.length} registros. Ya aparecen en la app.`, 'ok');
+    importEntries = [];
+    document.getElementById('import-preview').style.display = 'none';
+    document.getElementById('import-dropzone-inner').innerHTML =
+      `<div style="font-size:32px;margin-bottom:8px;">📂</div><div style="font-size:13px;color:var(--text-muted);">Clic para seleccionar archivo Excel<br><span style="font-size:11px;opacity:.6;">.xlsx o .xls</span></div>`;
+    document.getElementById('import-file-input').value = '';
+
+  } catch(err) {
+    importLog('Error al importar: ' + err.message, 'err');
+    document.getElementById('btn-do-import').disabled = false;
+  }
+}
+
+function importLog(msg, type='info') {
+  const el = document.getElementById('import-log');
+  el.style.display = 'block';
+  const color = type==='ok' ? 'var(--green)' : type==='err' ? 'var(--red)' : 'var(--text-muted)';
+  el.innerHTML += `<div style="color:${color};">${type==='ok'?'✅ ':type==='err'?'❌ ':'→ '}${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// Cargar SheetJS automáticamente al abrir el tab importar
+const _origShowTab = showTab;
+function showTab(tab) {
+  _origShowTab(tab);
+  if (tab === 'importar' && typeof XLSX === 'undefined') {
+    loadSheetJS(() => {});
+  }
+}
+
 function showImgModal(src, caption) {
   document.getElementById('img-modal-img').src = src;
   document.getElementById('img-modal-caption').textContent = caption||'';
