@@ -605,7 +605,10 @@ function scheduleSave() {
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────
-function calcPend(e) { return Math.max(0, (e.monto||0) - (e.anticipo||0)); }
+function calcPend(e) {
+  if ((e.estatusPago || e.estatus) === 'pagado') return 0;
+  return Math.max(0, (e.monto||0) - (e.anticipo||0));
+}
 function getCanal(e) {
   if (e.tipo === 'ml') return 'ML';
   if (e.tipo === 'gasto') return 'GASTO';
@@ -771,7 +774,7 @@ function renderStatsBar() {
   const totalOut = Math.abs(gastos.reduce((s,e) => s+(e.monto||0), 0));
   const neto = totalIn - totalOut;
   const totalPend = ventas.reduce((s,e) => s+calcPend(e), 0);
-  const numPrev = entries.filter(e=>e.estatusEntrega==='preventa').length;
+  const numPrev = entries.filter(e=>e.estatus==='preventa').length;
   document.getElementById('stats-bar').innerHTML = `
     <div class="stat-card"><div class="stat-label">Ingresos totales</div><div class="stat-value green">$${totalIn.toLocaleString()}</div></div>
     <div class="stat-card"><div class="stat-label">Gastos totales</div><div class="stat-value red">$${totalOut.toLocaleString()}</div></div>
@@ -791,39 +794,23 @@ function getRange(p) {
 function renderStatsDetail() {
   const { start, end } = getRange(activePeriod);
 
-  // Fecha efectiva: usa fechaPago si existe, sino fecha de entrega
+  // Helper: fecha efectiva de un entry (pago si existe, sino entrega)
   const fechaEfectiva = e => e.fechaPago || e.fecha;
 
-  // Ventas en el período (por fecha efectiva de pago)
   const inR = entries.filter(e => {
     const f = fechaEfectiva(e);
     if (!f) return false;
     const d = new Date(f+'T12:00:00');
     return d >= start && d <= end;
   });
-
-  // Gastos en el período (por fecha de entrega, no de pago)
-  const gastosR = entries.filter(e => {
-    if (e.tipo !== 'gasto') return false;
-    if (!e.fecha) return false;
-    const d = new Date(e.fecha+'T12:00:00');
-    return d >= start && d <= end;
-  });
-
   const ventas = inR.filter(e=>e.tipo==='venta'||e.tipo==='pkg');
+  const gastos = inR.filter(e=>e.tipo==='gasto');
   const mls = inR.filter(e=>e.tipo==='ml');
   const totalIn = ventas.reduce((s,e)=>s+(e.monto||0),0);
-  const totalOut = Math.abs(gastosR.reduce((s,e)=>s+(e.monto||0),0));
+  const totalOut = Math.abs(gastos.reduce((s,e)=>s+(e.monto||0),0));
   const neto = totalIn - totalOut;
-
-  // Pendiente y cobrado: del total de entradas (no solo del período)
-  const todasVentas = entries.filter(e=>e.tipo==='venta'||e.tipo==='pkg');
-  const pend = todasVentas.reduce((s,e)=>s+calcPend(e),0);
-  const cobrado = ventas.reduce((s,e)=>s+(e.anticipo||0)+(e.estatusPago==='pagado'?calcPend(e):0),0);
-
-  // Ventas con fecha de pago diferente a fecha de entrega en el período
-  const conFechaPagoDist = ventas.filter(e=>e.fechaPago && e.fechaPago !== e.fecha).length;
-
+  const pend = ventas.reduce((s,e)=>s+calcPend(e),0);
+  const cobrado = ventas.reduce((s,e)=>s+(e.monto||0)-calcPend(e),0);
   const byCh = {};
   ventas.forEach(e=>{ byCh[e.canal]=(byCh[e.canal]||0)+(e.monto||0); });
   const bars = Object.entries(byCh).map(([c,v])=>{
@@ -834,22 +821,20 @@ function renderStatsDetail() {
       <div class="ch-bar-track"><div class="ch-bar-fill" style="width:${pct}%;background:${col}"></div></div>
     </div>`;
   }).join('');
-
   document.getElementById('stats-detail').innerHTML = `
     <div class="stats-section">
       <div class="stats-section-title">💰 Financiero</div>
-      <div class="stats-row"><span class="lbl">Ingresos <span style="font-size:10px;color:var(--text-dim)">(por fecha de pago)</span></span><span class="val" style="color:var(--green)">$${totalIn.toLocaleString()}</span></div>
+      <div class="stats-row"><span class="lbl">Ingresos</span><span class="val" style="color:var(--green)">$${totalIn.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Gastos</span><span class="val" style="color:var(--red)">-$${totalOut.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Neto</span><span class="val" style="color:${neto>=0?'var(--green)':'var(--red)'};font-size:16px">${neto>=0?'+':''}$${neto.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Envíos ML</span><span class="val" style="color:var(--yellow)">${mls.length}</span></div>
-      ${conFechaPagoDist > 0 ? `<div class="stats-row"><span class="lbl" style="color:var(--text-dim);font-size:11px">💡 ${conFechaPagoDist} venta(s) pagadas antes de la entrega</span></div>` : ''}
     </div>
     <div class="stats-section">
       <div class="stats-section-title">⏳ Cobranza</div>
-      <div class="stats-row"><span class="lbl">Cobrado en período</span><span class="val" style="color:var(--green)">$${cobrado.toLocaleString()}</span></div>
-      <div class="stats-row"><span class="lbl">Pendiente global</span><span class="val" style="color:var(--yellow)">$${pend.toLocaleString()}</span></div>
+      <div class="stats-row"><span class="lbl">Cobrado</span><span class="val" style="color:var(--green)">$${cobrado.toLocaleString()}</span></div>
+      <div class="stats-row"><span class="lbl">Pendiente</span><span class="val" style="color:var(--yellow)">$${pend.toLocaleString()}</span></div>
       <div class="stats-row"><span class="lbl">Piezas vendidas</span><span class="val">${ventas.length}</span></div>
-      <div class="stats-row"><span class="lbl">Gastos registrados</span><span class="val">${gastosR.length}</span></div>
+      <div class="stats-row"><span class="lbl">Gastos registrados</span><span class="val">${gastos.length}</span></div>
     </div>
     <div class="stats-section" style="grid-column:1/-1">
       <div class="stats-section-title">📦 Por canal</div>
